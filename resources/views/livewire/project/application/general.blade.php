@@ -100,58 +100,24 @@
                 @endif
             </div>
             @if ($application->build_pack !== 'dockercompose')
-                <div class="flex items-end gap-2">
-                    @if ($application->settings->is_container_label_readonly_enabled == false)
-                        <x-forms.input placeholder="https://coolify.io" wire:model="fqdn" label="Domains" readonly
-                            helper="Readonly labels are disabled. You can set the domains in the labels section."
-                            x-bind:disabled="!canUpdate" />
-                    @else
-                        <x-forms.input placeholder="https://coolify.io" wire:model="fqdn" label="Domains"
-                            helper="You can specify one domain with path or more with comma. You can specify a port to bind the domain to.<br><br><span class='text-helper'>Example</span><br>- http://app.coolify.io,https://cloud.coolify.io/dashboard<br>- http://app.coolify.io/api/v3<br>- http://app.coolify.io:3000 -> app.coolify.io will point to port 3000 inside the container. "
-                            x-bind:disabled="!canUpdate" />
-                        @can('update', $application)
-                            <x-forms.button wire:click="getWildcardDomain">Generate Domain
-                            </x-forms.button>
-                        @endcan
-                    @endif
+                <div class="flex items-center gap-2 pt-4">
+                    <h3>Domains</h3>
+                    <a class="text-sm underline"
+                        href="{{ route('project.application.domains', ['project_uuid' => request()->route('project_uuid'), 'environment_uuid' => request()->route('environment_uuid'), 'application_uuid' => $application->uuid]) }}">
+                        Manage domains →
+                    </a>
                 </div>
-                <div class="flex items-end gap-2">
-                    @if ($application->settings->is_container_label_readonly_enabled == false)
-                        @if ($application->redirect === 'both')
-                            <x-forms.input label="Direction" value="Allow www & non-www." readonly
-                                helper="Readonly labels are disabled. You can set the direction in the labels section."
-                                x-bind:disabled="!canUpdate" />
-                        @elseif ($application->redirect === 'www')
-                            <x-forms.input label="Direction" value="Redirect to www." readonly
-                                helper="Readonly labels are disabled. You can set the direction in the labels section."
-                                x-bind:disabled="!canUpdate" />
-                        @elseif ($application->redirect === 'non-www')
-                            <x-forms.input label="Direction" value="Redirect to non-www." readonly
-                                helper="Readonly labels are disabled. You can set the direction in the labels section."
-                                x-bind:disabled="!canUpdate" />
-                        @endif
+                <div class="flex items-center gap-2 pb-4">
+                    @if (!empty($application->fqdn))
+                        <div class="text-sm">
+                            @foreach ($application->fqdns as $domain)
+                                <div class="py-1 font-mono">{{ $domain }}</div>
+                            @endforeach
+                        </div>
                     @else
-                        <x-forms.select label="Direction" id="redirect" required
-                            helper="You must need to add www and non-www as an A DNS record. Make sure the www domain is added under Domains."
-                            x-bind:disabled="!canUpdate">
-                            <option value="both">Allow www & non-www.</option>
-                            <option value="www">Redirect to www.</option>
-                            <option value="non-www">Redirect to non-www.</option>
-                        </x-forms.select>
-                        @if ($application->settings->is_container_label_readonly_enabled)
-                            @can('update', $application)
-                                <x-modal-confirmation title="Confirm Redirection Setting?" buttonTitle="Set Direction"
-                                    submitAction="setRedirect" :actions="['All traffic will be redirected to the selected direction.']"
-                                    confirmationText="{{ $application->fqdn . '/' }}"
-                                    confirmationLabel="Please confirm the execution of the action by entering the Application URL below"
-                                    shortConfirmationLabel="Application URL" :confirmWithPassword="false"
-                                    step2ButtonText="Set Direction">
-                                    <x-slot:customButton>
-                                        <div class="w-[7.2rem]">Set Direction</div>
-                                    </x-slot:customButton>
-                                </x-modal-confirmation>
-                            @endcan
-                        @endif
+                        <div class="text-sm text-neutral-500 dark:text-neutral-400">
+                            No domains configured. Add domains in the Domains view.
+                        </div>
                     @endif
                 </div>
             @endif
