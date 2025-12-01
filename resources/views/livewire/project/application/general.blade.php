@@ -107,12 +107,29 @@
                         Manage domains →
                     </a>
                 </div>
-                <div class="flex items-center gap-2 pb-4">
+                <div class="pb-4">
                     @if (!empty($application->fqdn))
-                        <div class="text-sm">
-                            @foreach ($application->fqdns as $domain)
-                                <div class="py-1 font-mono">{{ $domain }}</div>
+                        @php
+                            $allDomains = $application->fqdns;
+                            $displayLimit = 3;
+                            $displayDomains = array_slice($allDomains, 0, $displayLimit);
+                            $remainingCount = count($allDomains) - $displayLimit;
+                        @endphp
+                        <div class="flex flex-wrap gap-2">
+                            @foreach ($displayDomains as $domain)
+                                @php
+                                    $host = parse_url($domain, PHP_URL_HOST) ?? $domain;
+                                @endphp
+                                <span class="px-2 py-1 text-xs font-mono rounded bg-neutral-100 dark:bg-coolgray-300 text-neutral-700 dark:text-neutral-300 truncate max-w-[200px]" title="{{ $domain }}">
+                                    {{ $host }}
+                                </span>
                             @endforeach
+                            @if ($remainingCount > 0)
+                                <a href="{{ route('project.application.domains', ['project_uuid' => request()->route('project_uuid'), 'environment_uuid' => request()->route('environment_uuid'), 'application_uuid' => $application->uuid]) }}"
+                                   class="px-2 py-1 text-xs rounded bg-neutral-200 dark:bg-coolgray-200 text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
+                                    +{{ $remainingCount }} more
+                                </a>
+                            @endif
                         </div>
                     @else
                         <div class="text-sm text-neutral-500 dark:text-neutral-400">
