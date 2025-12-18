@@ -13,22 +13,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('cloud_provider_tokens', function (Blueprint $table) {
-            $table->string('uuid')->nullable()->unique()->after('id');
-        });
+        if (! Schema::hasColumn('cloud_provider_tokens', 'uuid')) {
+            Schema::table('cloud_provider_tokens', function (Blueprint $table) {
+                $table->string('uuid')->nullable()->unique()->after('id');
+            });
 
-        // Generate UUIDs for existing records
-        $tokens = DB::table('cloud_provider_tokens')->whereNull('uuid')->get();
-        foreach ($tokens as $token) {
+            // Generate UUIDs for existing records using chunked processing
             DB::table('cloud_provider_tokens')
-                ->where('id', $token->id)
-                ->update(['uuid' => (string) new Cuid2]);
-        }
+                ->whereNull('uuid')
+                ->chunkById(500, function ($tokens) {
+                    foreach ($tokens as $token) {
+                        DB::table('cloud_provider_tokens')
+                            ->where('id', $token->id)
+                            ->update(['uuid' => (string) new Cuid2]);
+                    }
+                });
 
-        // Make uuid non-nullable after filling in values
-        Schema::table('cloud_provider_tokens', function (Blueprint $table) {
-            $table->string('uuid')->nullable(false)->change();
-        });
+            // Make uuid non-nullable after filling in values
+            Schema::table('cloud_provider_tokens', function (Blueprint $table) {
+                $table->string('uuid')->nullable(false)->change();
+            });
+        }
     }
 
     /**
@@ -36,8 +41,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('cloud_provider_tokens', function (Blueprint $table) {
-            $table->dropColumn('uuid');
-        });
+        if (Schema::hasColumn('cloud_provider_tokens', 'uuid')) {
+            Schema::table('cloud_provider_tokens', function (Blueprint $table) {
+                $table->dropColumn('uuid');
+            });
+        }
     }
 };

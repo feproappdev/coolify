@@ -20,12 +20,13 @@ class Show extends Component
 
     public bool $is_debug_enabled = false;
 
+    public bool $fullscreen = false;
+
+    private bool $deploymentFinishedDispatched = false;
+
     public function getListeners()
     {
-        $teamId = auth()->user()->currentTeam()->id;
-
         return [
-            "echo-private:team.{$teamId},ServiceChecked" => '$refresh',
             'refreshQueue',
         ];
     }
@@ -91,10 +92,15 @@ class Show extends Component
 
     public function polling()
     {
-        $this->dispatch('deploymentFinished');
         $this->application_deployment_queue->refresh();
         $this->horizon_job_status = $this->application_deployment_queue->getHorizonJobStatus();
         $this->isKeepAliveOn();
+
+        // Dispatch event when deployment finishes to stop auto-scroll (only once)
+        if (! $this->isKeepAliveOn && ! $this->deploymentFinishedDispatched) {
+            $this->deploymentFinishedDispatched = true;
+            $this->dispatch('deploymentFinished');
+        }
     }
 
     public function getLogLinesProperty()
@@ -109,6 +115,19 @@ class Show extends Component
 
             return $logLine;
         });
+    }
+
+    public function copyLogs(): string
+    {
+        $logs = decode_remote_command_output($this->application_deployment_queue)
+            ->map(function ($line) {
+                return $line['timestamp'].' '.
+                       (isset($line['command']) && $line['command'] ? '[CMD]: ' : '').
+                       trim($line['line']);
+            })
+            ->join("\n");
+
+        return sanitizeLogsForExport($logs);
     }
 
     public function render()
