@@ -40,6 +40,12 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
     public function handle()
     {
         try {
+            Log::info('ServerConnectionCheck: Starting check', [
+                'server_id' => $this->server->id,
+                'server_name' => $this->server->name,
+                'server_ip' => $this->server->ip,
+            ]);
+
             // Check if server is disabled
             if ($this->server->settings->force_disabled) {
                 $this->server->settings->update([
@@ -67,6 +73,12 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
             // Check basic connectivity first
             $isReachable = $this->checkConnection();
 
+            Log::info('ServerConnectionCheck: Connection result', [
+                'server_id' => $this->server->id,
+                'server_name' => $this->server->name,
+                'is_reachable' => $isReachable,
+            ]);
+
             if (! $isReachable) {
                 $this->server->settings->update([
                     'is_reachable' => false,
@@ -85,7 +97,20 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
             // Server is reachable, check if Docker is available
             $isUsable = $this->checkDockerAvailability();
 
+            Log::info('ServerConnectionCheck: Docker result', [
+                'server_id' => $this->server->id,
+                'server_name' => $this->server->name,
+                'is_usable' => $isUsable,
+            ]);
+
             $this->server->settings->update([
+                'is_reachable' => true,
+                'is_usable' => $isUsable,
+            ]);
+
+            Log::info('ServerConnectionCheck: Completed successfully', [
+                'server_id' => $this->server->id,
+                'server_name' => $this->server->name,
                 'is_reachable' => true,
                 'is_usable' => $isUsable,
             ]);
@@ -140,11 +165,22 @@ class ServerConnectionCheckJob implements ShouldBeEncrypted, ShouldQueue
                 false // don't throw error
             );
 
-            return $output !== null;
-        } catch (\Throwable $e) {
-            Log::debug('ServerConnectionCheck: Connection check failed', [
+            $result = $output !== null;
+            
+            Log::debug('ServerConnectionCheck: checkConnection result', [
                 'server_id' => $this->server->id,
+                'server_name' => $this->server->name,
+                'output_is_null' => $output === null,
+                'result' => $result,
+            ]);
+
+            return $result;
+        } catch (\Throwable $e) {
+            Log::warning('ServerConnectionCheck: Connection check failed with exception', [
+                'server_id' => $this->server->id,
+                'server_name' => $this->server->name,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return false;

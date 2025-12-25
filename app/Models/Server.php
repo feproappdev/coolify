@@ -1100,6 +1100,9 @@ $schema://$host {
 
     public function serverStatus(): bool
     {
+        // Refresh settings to get latest value from database
+        $this->refresh();
+        
         if ($this->status() === false) {
             return false;
         }
@@ -1112,8 +1115,13 @@ $schema://$host {
 
     public function status(): bool
     {
-        ['uptime' => $uptime] = $this->validateConnection();
-        if ($uptime === false) {
+        // Use the cached is_reachable value instead of re-validating connection
+        // The ServerConnectionCheckJob handles connection validation
+        // Refresh to ensure we have the latest value
+        $this->load('settings');
+        $isReachable = data_get($this->settings, 'is_reachable', false);
+        
+        if ($isReachable === false) {
             foreach ($this->applications() as $application) {
                 $application->status = 'exited';
                 $application->save();
@@ -1200,6 +1208,14 @@ $schema://$host {
 
     public function validateConnection(bool $justCheckingNewKey = false)
     {
+        // Log who's calling this method
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5);
+        $caller = isset($backtrace[1]) ? ($backtrace[1]['class'] ?? '') . '::' . ($backtrace[1]['function'] ?? '') : 'unknown';
+        \Illuminate\Support\Facades\Log::debug('validateConnection called', [
+            'server_name' => $this->name,
+            'caller' => $caller,
+        ]);
+        
         $this->disableSshMux();
 
         if ($this->skipServer()) {
@@ -1211,6 +1227,7 @@ $schema://$host {
                 $this->settings->is_reachable = true;
                 $this->settings->save();
                 ServerReachabilityChanged::dispatch($this);
+                \Illuminate\Support\Facades\Log::info('validateConnection: Set is_reachable=true', ['server_name' => $this->name]);
             }
 
             return ['uptime' => true, 'error' => null];
@@ -1222,6 +1239,11 @@ $schema://$host {
                 $this->settings->is_reachable = false;
                 $this->settings->save();
                 ServerReachabilityChanged::dispatch($this);
+                \Illuminate\Support\Facades\Log::warning('validateConnection: Set is_reachable=false', [
+                    'server_name' => $this->name,
+                    'error' => $e->getMessage(),
+                    'caller' => $caller,
+                ]);
             }
 
             return ['uptime' => false, 'error' => $e->getMessage()];

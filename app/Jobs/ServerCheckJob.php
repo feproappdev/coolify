@@ -15,6 +15,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
 {
@@ -36,7 +37,28 @@ class ServerCheckJob implements ShouldBeEncrypted, ShouldQueue
     public function handle()
     {
         try {
-            if ($this->server->serverStatus() === false) {
+            Log::debug('ServerCheckJob: Starting for ' . $this->server->name);
+            
+            // Refresh server to get latest settings from database
+            $this->server->refresh();
+            $this->server->load('settings');
+            
+            // Check if server is reachable based on the cached value set by ServerConnectionCheckJob
+            $isReachable = data_get($this->server->settings, 'is_reachable', false);
+            $isUsable = data_get($this->server->settings, 'is_usable', false);
+            
+            Log::debug('ServerCheckJob: Server status from database', [
+                'server_name' => $this->server->name,
+                'is_reachable' => $isReachable,
+                'is_usable' => $isUsable,
+            ]);
+            
+            if (!$isReachable || !$isUsable) {
+                Log::warning('ServerCheckJob: Server not reachable/usable, skipping', [
+                    'server_name' => $this->server->name,
+                    'is_reachable' => $isReachable,
+                    'is_usable' => $isUsable,
+                ]);
                 return 'Server is not reachable or not ready.';
             }
 
