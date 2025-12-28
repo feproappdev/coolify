@@ -103,6 +103,16 @@ for name, svc in data.get('services', {}).items():
     # Remove env_file - we'll inline the variables
     if 'env_file' in svc:
         del svc['env_file']
+    # Add network aliases so services can find each other by simple name
+    if 'networks' in svc:
+        for net_name, net_config in svc['networks'].items():
+            if net_config is None:
+                svc['networks'][net_name] = {'aliases': [name]}
+            elif isinstance(net_config, dict):
+                if 'aliases' not in net_config:
+                    net_config['aliases'] = [name]
+                elif name not in net_config['aliases']:
+                    net_config['aliases'].append(name)
     # Substitute variables in environment
     if 'environment' in svc:
         env = svc['environment']
