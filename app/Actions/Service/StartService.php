@@ -47,18 +47,36 @@ class StartService
             $commands[] = "echo 'Creating Swarm overlay network...'";
             $commands[] = "docker network inspect {$service->uuid} >/dev/null 2>&1 || docker network create --driver overlay --attachable {$service->uuid}";
             
-            // Preprocess docker-compose.yml to remove unsupported Swarm options
+            // Preprocess docker-compose.yml using Python for proper YAML handling
             $commands[] = "echo 'Preprocessing compose file for Swarm compatibility...'";
-            // Remove container_name (not supported in Swarm)
-            $commands[] = "sed -i '/container_name:/d' {$workdir}/docker-compose.yml";
-            // Remove restart: policy (Swarm uses deploy.restart_policy)
-            $commands[] = "sed -i '/^[[:space:]]*restart:/d' {$workdir}/docker-compose.yml";
-            // Change external network to not external (we create it above)
-            $commands[] = "sed -i 's/external: true/external: false/g' {$workdir}/docker-compose.yml";
-            // Add overlay driver to networks
-            $commands[] = "sed -i '/^networks:/,/^[^ ]/{s/driver: bridge/driver: overlay/}' {$workdir}/docker-compose.yml";
-            // Ensure coolify-overlay network is included for proxy connectivity
-            $commands[] = "grep -q 'coolify-overlay' {$workdir}/docker-compose.yml || sed -i '/^networks:/a\\    coolify-overlay:\\n        external: true' {$workdir}/docker-compose.yml";
+            $pythonScript = <<<'PYTHON'
+import yaml
+import sys
+
+file = sys.argv[1]
+with open(file, 'r') as f:
+    data = yaml.safe_load(f)
+
+# Remove container_name and restart from all services
+for name, svc in data.get('services', {}).items():
+    if 'container_name' in svc:
+        del svc['container_name']
+    if 'restart' in svc:
+        del svc['restart']
+
+# Mark service networks as not external and use overlay driver
+for net_name, net_config in data.get('networks', {}).items():
+    if net_name != 'coolify-overlay' and net_config and net_config.get('external') == True:
+        net_config['external'] = False
+        net_config['driver'] = 'overlay'
+        net_config['attachable'] = True
+
+with open(file, 'w') as f:
+    yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+
+print('Compose file preprocessed for Swarm')
+PYTHON;
+            $commands[] = "python3 -c ".escapeshellarg($pythonScript)." {$workdir}/docker-compose.yml";
             
             $commands[] = "echo 'Deploying to Docker Swarm for HA...'";
             $commands[] = "docker stack deploy -c {$workdir}/docker-compose.yml {$service->uuid} --with-registry-auth --detach=false 2>&1 || docker stack deploy -c {$workdir}/docker-compose.yml {$service->uuid} --with-registry-auth";
