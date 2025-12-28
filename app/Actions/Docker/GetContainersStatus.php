@@ -97,12 +97,13 @@ class GetContainersStatus
 
         foreach ($this->containers as $container) {
             if ($this->server->isSwarm()) {
-                // For Swarm services, container labels are in TaskTemplate.ContainerSpec.Labels
-                $labels = data_get($container, 'Spec.TaskTemplate.ContainerSpec.Labels');
-                if (empty($labels)) {
-                    // Fallback to Spec.Labels for service-level labels
-                    $labels = data_get($container, 'Spec.Labels');
-                }
+                // For Swarm, labels can be in two places:
+                // - Spec.Labels: service-level labels (from deploy.labels in compose) - used by Applications
+                // - Spec.TaskTemplate.ContainerSpec.Labels: container labels - used by Services
+                // Merge both to support both Applications and Services
+                $serviceLabels = data_get($container, 'Spec.Labels', []);
+                $containerLabels = data_get($container, 'Spec.TaskTemplate.ContainerSpec.Labels', []);
+                $labels = array_merge($serviceLabels ?? [], $containerLabels ?? []);
                 $uuid = data_get($labels, 'coolify.name');
             } else {
                 $labels = data_get($container, 'Config.Labels');
