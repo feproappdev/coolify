@@ -180,11 +180,17 @@ function generateApplicationContainerName(Application $application, $pull_reques
     // TODO: refactor generateApplicationContainerName, we do not need $application and $pull_request_id
 
     $consistent_container_name = $application->settings->is_consistent_container_name_enabled;
+    
+    // For Swarm servers, always use consistent container names
+    // Otherwise each deployment creates a new service instead of updating the existing one
+    $server = data_get($application, 'destination.server');
+    $isSwarm = $server && $server->isSwarm();
+    
     $now = now()->format('Hisu');
     if ($pull_request_id !== 0 && $pull_request_id !== null) {
         return $application->uuid.'-pr-'.$pull_request_id;
     } else {
-        if ($consistent_container_name) {
+        if ($consistent_container_name || $isSwarm) {
             return $application->uuid;
         }
 
