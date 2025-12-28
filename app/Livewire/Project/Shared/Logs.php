@@ -72,12 +72,35 @@ class Logs extends Component
 
         try {
             if ($server->isSwarm()) {
-                $containers = collect([
-                    [
-                        'ID' => $this->resource->uuid,
-                        'Names' => $this->resource->uuid.'_'.$this->resource->uuid,
-                    ],
-                ]);
+                // For Swarm mode, query actual service names from Docker
+                // Service names follow pattern: {stack}_{service} where stack is the uuid
+                $uuid = $this->resource->uuid;
+                
+                // Query Docker Swarm for services matching this resource's uuid (stack name)
+                $output = instant_remote_process(
+                    ["docker service ls --filter 'name={$uuid}' --format '{{.Name}}'"],
+                    $server,
+                    false
+                );
+                
+                $containers = collect();
+                if (!empty($output)) {
+                    $serviceNames = collect(explode("\n", trim($output)))->filter();
+                    foreach ($serviceNames as $serviceName) {
+                        $containers->push([
+                            'ID' => $serviceName,
+                            'Names' => $serviceName,
+                        ]);
+                    }
+                }
+                
+                // If no services found, fall back to expected name pattern
+                if ($containers->isEmpty()) {
+                    $containers->push([
+                        'ID' => $uuid,
+                        'Names' => $uuid.'_'.$uuid,
+                    ]);
+                }
 
                 return $containers->toArray();
             } else {
