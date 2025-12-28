@@ -106,6 +106,10 @@ for name, svc in data.get('services', {}).items():
     # Remove env_file - we'll inline the variables
     if 'env_file' in svc:
         del svc['env_file']
+    # Remove healthcheck - Swarm health checks cause cascading failures when services start
+    # because depends_on is not honored and services fail health checks while waiting for deps
+    if 'healthcheck' in svc:
+        del svc['healthcheck']
     # Add network aliases so services can find each other by simple name
     if 'networks' in svc:
         for net_name, net_config in svc['networks'].items():
