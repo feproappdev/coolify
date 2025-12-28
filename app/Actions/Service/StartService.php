@@ -50,6 +50,7 @@ class StartService
             // Preprocess docker-compose.yml using Python for proper YAML handling
             // The service network is pre-created as overlay, so mark it external
             // Also inline env_file since Docker Swarm doesn't support env_file at runtime
+            // CRITICAL: Move traefik labels to deploy.labels for Swarm (Traefik reads service-level labels, not container labels)
             $commands[] = "echo 'Preprocessing compose file for Swarm compatibility...'";
             $serviceUuid = $service->uuid;
             $pythonScript = <<<PYTHON
@@ -110,16 +111,61 @@ for name, svc in data.get('services', {}).items():
     # because depends_on is not honored and services fail health checks while waiting for deps
     if 'healthcheck' in svc:
         del svc['healthcheck']
+    
+    # CRITICAL: Move traefik/caddy labels from 'labels' to 'deploy.labels' for Swarm
+    # In Swarm mode, Traefik reads from Service.Spec.Labels (deploy.labels), not ContainerSpec.Labels (labels)
+    container_labels = svc.get('labels', [])
+    traefik_labels = []
+    other_labels = []
+    
+    # Convert dict-style labels to list-style
+    if isinstance(container_labels, dict):
+        container_labels = [f"{k}={v}" for k, v in container_labels.items()]
+    
+    for label in container_labels:
+        if isinstance(label, str):
+            # Filter out certresolver labels since Cloudflare handles SSL
+            if 'certresolver' in label.lower():
+                continue
+            # Move traefik and caddy labels to deploy.labels
+            if label.startswith('traefik.') or label.startswith('caddy'):
+                traefik_labels.append(label)
+            else:
+                other_labels.append(label)
+    
+    # Keep non-traefik labels in container labels
+    svc['labels'] = other_labels
+    
+    # Add traefik labels to deploy.labels (service-level for Swarm)
+    if traefik_labels:
+        if 'deploy' not in svc:
+            svc['deploy'] = {}
+        # Merge with existing deploy labels
+        existing_deploy_labels = svc['deploy'].get('labels', [])
+        if isinstance(existing_deploy_labels, dict):
+            existing_deploy_labels = [f"{k}={v}" for k, v in existing_deploy_labels.items()]
+        svc['deploy']['labels'] = existing_deploy_labels + traefik_labels
+    
+    # Add coolify-overlay network so Traefik can route to the service
+    if 'networks' not in svc:
+        svc['networks'] = {}
+    if isinstance(svc['networks'], list):
+        # Convert list to dict format
+        svc['networks'] = {net: None for net in svc['networks']}
+    # Add coolify-overlay network with alias
+    if 'coolify-overlay' not in svc['networks']:
+        svc['networks']['coolify-overlay'] = {'aliases': [name]}
+    
     # Add network aliases so services can find each other by simple name
-    if 'networks' in svc:
-        for net_name, net_config in svc['networks'].items():
-            if net_config is None:
-                svc['networks'][net_name] = {'aliases': [name]}
-            elif isinstance(net_config, dict):
-                if 'aliases' not in net_config:
-                    net_config['aliases'] = [name]
-                elif name not in net_config['aliases']:
-                    net_config['aliases'].append(name)
+    for net_name, net_config in svc['networks'].items():
+        if net_config is None:
+            svc['networks'][net_name] = {'aliases': [name]}
+        elif isinstance(net_config, dict):
+            if 'aliases' not in net_config:
+                net_config['aliases'] = [name]
+            elif name not in net_config['aliases']:
+                net_config['aliases'].append(name)
+    
     # Substitute variables in environment AND replace service hostnames with stack-qualified names
     if 'environment' in svc:
         env = svc['environment']
@@ -151,6 +197,10 @@ for name, svc in data.get('services', {}).items():
 nets = data.get('networks', {})
 for net_name in list(nets.keys()):
     nets[net_name] = {'external': True, 'name': net_name}
+
+# Add coolify-overlay network as external
+if 'coolify-overlay' not in nets:
+    nets['coolify-overlay'] = {'external': True, 'name': 'coolify-overlay'}
 
 with open(file, 'w') as f:
     yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
