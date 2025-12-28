@@ -265,6 +265,10 @@ class GetContainersStatus
                 }
 
                 $containerName = data_get($labels, 'com.docker.compose.service');
+                // For Swarm services, use coolify.name or stack namespace as container name
+                if (! $containerName && $this->server->isSwarm()) {
+                    $containerName = data_get($labels, 'coolify.name') ?? data_get($labels, 'com.docker.stack.namespace');
+                }
                 if ($containerName) {
                     $this->serviceContainerStatuses->get($key)->put($containerName, $containerStatus);
                 }

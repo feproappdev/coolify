@@ -35,18 +35,27 @@ class StopService
                 return 'Server is not functional';
             }
 
-            $containersToStop = [];
-            $applications = $service->applications()->get();
-            foreach ($applications as $application) {
-                $containersToStop[] = "{$application->name}-{$service->uuid}";
-            }
-            $dbs = $service->databases()->get();
-            foreach ($dbs as $db) {
-                $containersToStop[] = "{$db->name}-{$service->uuid}";
-            }
+            // HACK: Use docker stack rm for Swarm servers
+            if ($server->isSwarm()) {
+                instant_remote_process(
+                    command: ["docker stack rm {$service->uuid}"],
+                    server: $server,
+                    throwError: false
+                );
+            } else {
+                $containersToStop = [];
+                $applications = $service->applications()->get();
+                foreach ($applications as $application) {
+                    $containersToStop[] = "{$application->name}-{$service->uuid}";
+                }
+                $dbs = $service->databases()->get();
+                foreach ($dbs as $db) {
+                    $containersToStop[] = "{$db->name}-{$service->uuid}";
+                }
 
-            if (! empty($containersToStop)) {
-                $this->stopContainersInParallel($containersToStop, $server);
+                if (! empty($containersToStop)) {
+                    $this->stopContainersInParallel($containersToStop, $server);
+                }
             }
 
             if ($deleteConnectedNetworks) {
