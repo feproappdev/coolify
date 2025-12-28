@@ -63,16 +63,29 @@ for name, svc in data.get('services', {}).items():
         del svc['container_name']
     if 'restart' in svc:
         del svc['restart']
+    # Ensure all services are on overlay networks
+    if 'networks' not in svc:
+        svc['networks'] = {}
 
-# Mark service networks as not external and use overlay driver
-for net_name, net_config in data.get('networks', {}).items():
-    if net_name != 'coolify-overlay' and net_config and net_config.get('external') == True:
-        net_config['external'] = False
+# Process networks section
+nets = data.get('networks', {})
+for net_name in list(nets.keys()):
+    net_config = nets[net_name]
+    if net_name == 'coolify-overlay':
+        # Keep coolify-overlay as external - it's the Traefik proxy network
+        nets[net_name] = {'external': True}
+    elif net_config is None:
+        # Handle null network config
+        nets[net_name] = {'driver': 'overlay', 'attachable': True}
+    elif isinstance(net_config, dict):
+        # Convert external networks to overlay
+        if net_config.get('external') == True:
+            net_config['external'] = False
         net_config['driver'] = 'overlay'
         net_config['attachable'] = True
 
 with open(file, 'w') as f:
-    yaml.dump(data, f, default_flow_style=False, sort_keys=False)
+    yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
 print('Compose file preprocessed for Swarm')
 PYTHON;
