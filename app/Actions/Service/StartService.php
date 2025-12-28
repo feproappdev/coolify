@@ -49,30 +49,78 @@ class StartService
             
             // Preprocess docker-compose.yml using Python for proper YAML handling
             // The service network is pre-created as overlay, so mark it external
+            // Also inline env_file since Docker Swarm doesn't support env_file at runtime
             $commands[] = "echo 'Preprocessing compose file for Swarm compatibility...'";
             $serviceUuid = $service->uuid;
             $pythonScript = <<<PYTHON
 import yaml
 import sys
+import os
+import re
 
 file = sys.argv[1]
+workdir = os.path.dirname(file)
 service_uuid = '{$serviceUuid}'
+
+# Load .env file if exists
+env_vars = {}
+env_file_path = os.path.join(workdir, '.env')
+if os.path.exists(env_file_path):
+    with open(env_file_path, 'r') as ef:
+        for line in ef:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, _, value = line.partition('=')
+                env_vars[key.strip()] = value.strip()
+
+def substitute_vars(val):
+    if not isinstance(val, str):
+        return val
+    # Replace \${VAR} and \${VAR:-default} patterns
+    def replacer(m):
+        var_expr = m.group(1)
+        if ':-' in var_expr:
+            var_name, default = var_expr.split(':-', 1)
+            return env_vars.get(var_name, default)
+        elif '-' in var_expr:
+            var_name, default = var_expr.split('-', 1)
+            return env_vars.get(var_name, default)
+        return env_vars.get(var_expr, m.group(0))
+    val = re.sub(r'\\\$\{([^}]+)\}', replacer, val)
+    val = re.sub(r'\\\$([A-Za-z_][A-Za-z0-9_]*)', lambda m: env_vars.get(m.group(1), m.group(0)), val)
+    return val
 
 with open(file, 'r') as f:
     data = yaml.safe_load(f)
 
-# Remove container_name and restart from all services
+# Process each service
 for name, svc in data.get('services', {}).items():
+    # Remove unsupported options
     if 'container_name' in svc:
         del svc['container_name']
     if 'restart' in svc:
         del svc['restart']
+    # Remove env_file - we'll inline the variables
+    if 'env_file' in svc:
+        del svc['env_file']
+    # Substitute variables in environment
+    if 'environment' in svc:
+        env = svc['environment']
+        if isinstance(env, dict):
+            svc['environment'] = {k: substitute_vars(v) for k, v in env.items()}
+        elif isinstance(env, list):
+            new_env = []
+            for item in env:
+                if '=' in str(item):
+                    k, _, v = str(item).partition('=')
+                    new_env.append(f'{k}={substitute_vars(v)}')
+                else:
+                    new_env.append(substitute_vars(item))
+            svc['environment'] = new_env
 
 # Process networks section - all networks should be external since we pre-create them
 nets = data.get('networks', {})
 for net_name in list(nets.keys()):
-    # All networks (coolify-overlay and service network) are pre-created as overlay
-    # Mark them all as external so docker stack doesn't try to create them
     nets[net_name] = {'external': True, 'name': net_name}
 
 with open(file, 'w') as f:
