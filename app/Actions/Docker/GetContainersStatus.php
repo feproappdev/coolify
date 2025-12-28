@@ -97,7 +97,12 @@ class GetContainersStatus
 
         foreach ($this->containers as $container) {
             if ($this->server->isSwarm()) {
-                $labels = data_get($container, 'Spec.Labels');
+                // For Swarm services, container labels are in TaskTemplate.ContainerSpec.Labels
+                $labels = data_get($container, 'Spec.TaskTemplate.ContainerSpec.Labels');
+                if (empty($labels)) {
+                    // Fallback to Spec.Labels for service-level labels
+                    $labels = data_get($container, 'Spec.Labels');
+                }
                 $uuid = data_get($labels, 'coolify.name');
             } else {
                 $labels = data_get($container, 'Config.Labels');
