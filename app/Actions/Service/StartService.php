@@ -93,6 +93,9 @@ def substitute_vars(val):
 with open(file, 'r') as f:
     data = yaml.safe_load(f)
 
+# Get all service names for hostname substitution
+service_names = list(data.get('services', {}).keys())
+
 # Process each service
 for name, svc in data.get('services', {}).items():
     # Remove unsupported options
@@ -113,19 +116,31 @@ for name, svc in data.get('services', {}).items():
                     net_config['aliases'] = [name]
                 elif name not in net_config['aliases']:
                     net_config['aliases'].append(name)
-    # Substitute variables in environment
+    # Substitute variables in environment AND replace service hostnames with stack-qualified names
     if 'environment' in svc:
         env = svc['environment']
+        def process_env_val(val):
+            val = substitute_vars(val)
+            # Replace simple service hostnames with stack-qualified names
+            # e.g., postgres -> stackname_postgres, redis -> stackname_redis
+            if isinstance(val, str):
+                for svc_name in service_names:
+                    # Handle URLs like redis://default@redis:6379
+                    val = re.sub(r'@' + svc_name + r':', '@' + service_uuid + '_' + svc_name + ':', val)
+                    # Handle postgres host references
+                    if val.lower() == svc_name:
+                        val = service_uuid + '_' + svc_name
+            return val
         if isinstance(env, dict):
-            svc['environment'] = {k: substitute_vars(v) for k, v in env.items()}
+            svc['environment'] = {k: process_env_val(v) for k, v in env.items()}
         elif isinstance(env, list):
             new_env = []
             for item in env:
                 if '=' in str(item):
                     k, _, v = str(item).partition('=')
-                    new_env.append(f'{k}={substitute_vars(v)}')
+                    new_env.append(f'{k}={process_env_val(v)}')
                 else:
-                    new_env.append(substitute_vars(item))
+                    new_env.append(process_env_val(item))
             svc['environment'] = new_env
 
 # Process networks section - all networks should be external since we pre-create them
