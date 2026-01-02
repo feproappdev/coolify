@@ -1,0 +1,52 @@
+# Custom Coolify Docker Image with Swarm Support
+# Based on official Coolify image with our modifications
+
+ARG COOLIFY_VERSION=latest
+FROM ghcr.io/coollabsio/coolify:${COOLIFY_VERSION}
+
+# Metadata
+LABEL maintainer="feproappdev"
+LABEL description="Coolify with Docker Swarm support and custom fixes"
+LABEL version="custom-swarm-1.0"
+
+# Copy our modified files
+# These files contain Swarm-specific fixes and enhancements
+
+# Core Swarm support files
+COPY app/Actions/Docker/GetContainersStatus.php /var/www/html/app/Actions/Docker/GetContainersStatus.php
+COPY app/Livewire/Project/Shared/Logs.php /var/www/html/app/Livewire/Project/Shared/Logs.php
+COPY app/Actions/Service/StartService.php /var/www/html/app/Actions/Service/StartService.php
+COPY app/Actions/Service/StopService.php /var/www/html/app/Actions/Service/StopService.php
+COPY app/Actions/Application/StopApplication.php /var/www/html/app/Actions/Application/StopApplication.php
+
+# Model updates with Swarm support
+COPY app/Models/Server.php /var/www/html/app/Models/Server.php
+COPY app/Models/Application.php /var/www/html/app/Models/Application.php
+COPY app/Models/Service.php /var/www/html/app/Models/Service.php
+
+# Deployment job with Swarm support
+COPY app/Jobs/ApplicationDeploymentJob.php /var/www/html/app/Jobs/ApplicationDeploymentJob.php
+
+# Livewire components with Swarm server selection fix
+COPY app/Livewire/Project/New/Select.php /var/www/html/app/Livewire/Project/New/Select.php
+
+# Helper functions
+COPY bootstrap/helpers/docker.php /var/www/html/bootstrap/helpers/docker.php
+COPY bootstrap/helpers/applications.php /var/www/html/bootstrap/helpers/applications.php
+
+# Hostzones Branding
+COPY public/css/hostzones-theme.css /var/www/html/public/css/hostzones-theme.css
+COPY public/images/hostzones-logo-white.svg /var/www/html/public/images/hostzones-logo-white.svg
+COPY resources/views/layouts/base.blade.php /var/www/html/resources/views/layouts/base.blade.php
+COPY resources/views/layouts/app.blade.php /var/www/html/resources/views/layouts/app.blade.php
+COPY resources/views/components/navbar.blade.php /var/www/html/resources/views/components/navbar.blade.php
+COPY resources/views/livewire/dashboard.blade.php /var/www/html/resources/views/livewire/dashboard.blade.php
+
+# Note: Permissions are already set in base image
+# Files are owned by www-data:www-data
+
+# Health check
+HEALTHCHECK --interval=5s --timeout=2s --retries=10 \
+    CMD curl --fail http://127.0.0.1:8080/api/health || exit 1
+
+# Default command (inherited from base image)

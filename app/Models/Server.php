@@ -266,7 +266,8 @@ class Server extends BaseModel
 
     public static function isUsable()
     {
-        return Server::ownedByCurrentTeam()->whereRelation('settings', 'is_reachable', true)->whereRelation('settings', 'is_usable', true)->whereRelation('settings', 'is_swarm_worker', false)->whereRelation('settings', 'is_build_server', false)->whereRelation('settings', 'force_disabled', false);
+        // Allow Swarm workers and build servers to be used for deployments
+        return Server::ownedByCurrentTeam()->whereRelation('settings', 'is_reachable', true)->whereRelation('settings', 'is_usable', true)->whereRelation('settings', 'force_disabled', false);
     }
 
     public static function destinationsByServer(string $server_id)

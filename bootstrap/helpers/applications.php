@@ -81,22 +81,17 @@ function queue_application_deployment(Application $application, string $deployme
         'only_this_server' => $only_this_server,
     ]);
 
-    if ($no_questions_asked) {
+    if ($no_questions_asked || next_queuable($server_id, $application_id, $commit, $pull_request_id)) {
         $deployment->update([
             'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
         ]);
         ApplicationDeploymentJob::dispatch(
             application_deployment_queue_id: $deployment->id,
         );
-    } elseif (next_queuable($server_id, $application_id, $commit, $pull_request_id)) {
-        $deployment->update([
-            'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
-        ]);
-        ApplicationDeploymentJob::dispatch(
-            application_deployment_queue_id: $deployment->id,
-        );
+    } else {
+        // Cannot queue - concurrent limit reached, keep as queued
+        ray("Deployment {$deployment_uuid} waiting in queue");
     }
-
     return [
         'status' => 'queued',
         'message' => 'Deployment queued.',

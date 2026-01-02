@@ -1,0 +1,326 @@
+/*
+ * Hostzones Custom Theme for Coolify v4
+ * Brand Colors: Purple #7265b5, Deep Purple #4a3f7a, Gold #fdc438
+ */
+
+:root {
+  --hz-purple: #7265b5;
+  --hz-purple-deep: #4a3f7a;
+  --hz-purple-darker: #3a3162;
+  --hz-purple-light: #e8e5f3;
+  --hz-purple-lighter: #f5f5f7;
+  --hz-gold: #fdc438;
+  --hz-text-dark: #1f2937;
+  --hz-text-gray: #6b7280;
+  --hz-border-light: #e5e7eb;
+}
+
+/* ========================================
+   SIDEBAR - Purple Background
+   ======================================== */
+aside,
+aside[class*="fixed"],
+nav[class*="lg:w-"],
+div.lg\:fixed.lg\:inset-y-0 {
+  background: linear-gradient(180deg, #4a3f7a 0%, #3a3162 100%) !important;
+  border-right: none !important;
+}
+
+/* Sidebar text - white */
+aside *,
+aside a,
+aside button,
+aside span,
+aside div {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Sidebar links hover */
+aside a:hover,
+aside button:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Active sidebar item */
+aside a[class*="bg-"],
+aside a[aria-current="page"],
+aside button[class*="bg-"] {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-left: 3px solid #fdc438 !important;
+}
+
+/* Sidebar icons */
+aside svg {
+  color: rgba(255, 255, 255, 0.85) !important;
+  stroke: currentColor !important;
+}
+
+/* ========================================
+   MAIN CONTENT AREA - Light Gray Background
+   ======================================== */
+main,
+main > div,
+body,
+[class*="max-w-7xl"],
+div[class*="p-4"],
+div[class*="p-6"] {
+  background-color: #f5f5f7 !important;
+}
+
+/* ========================================
+   CARDS - Clean White Cards with Subtle Borders
+   ======================================== */
+/* Remove heavy purple borders, use subtle gray */
+div[class*="border"][class*="rounded"],
+div[class*="card"],
+article,
+section[class*="border"] {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+div[class*="border"][class*="rounded"]:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ========================================
+   TEXT COLORS - Dark Gray, Not Purple
+   ======================================== */
+/* Main heading text - dark gray */
+h1, h2, h3, h4, h5, h6,
+[class*="font-bold"],
+[class*="font-semibold"] {
+  color: #1f2937 !important;
+}
+
+/* Body text - medium gray */
+p, span:not(aside span),
+div:not(aside div) {
+  color: #374151 !important;
+}
+
+/* Subtitle/description text */
+p[class*="text-sm"],
+span[class*="text-xs"],
+[class*="text-neutral"],
+[class*="text-gray"] {
+  color: #6b7280 !important;
+}
+
+/* ========================================
+   LINKS - Purple Links (not everything)
+   ======================================== */
+/* Only actual links should be purple */
+a:not(aside a) {
+  color: #7265b5 !important;
+  text-decoration: none !important;
+}
+
+a:not(aside a):hover {
+  color: #4a3f7a !important;
+  text-decoration: none !important;
+}
+
+/* ========================================
+   BUTTONS - Purple Primary Buttons
+   ======================================== */
+button[class*="bg-coollabs"],
+button[class*="bg-blue"],
+button[class*="bg-neutral-800"],
+button[class*="bg-neutral-900"],
+a[class*="btn-primary"] {
+  background: linear-gradient(135deg, #7265b5 0%, #4a3f7a 100%) !important;
+  border: none !important;
+  color: white !important;
+}
+
+button[class*="bg-coollabs"]:hover,
+button[class*="bg-blue"]:hover {
+  background: linear-gradient(135deg, #4a3f7a 0%, #3a3162 100%) !important;
+}
+
+/* Secondary/outline buttons - minimal purple */
+button[class*="border"]:not([class*="bg-"]) {
+  border: 1px solid #e5e7eb !important;
+  color: #374151 !important;
+  background: white !important;
+}
+
+button[class*="border"]:not([class*="bg-"]):hover {
+  border-color: #7265b5 !important;
+  color: #7265b5 !important;
+}
+
+/* ========================================
+   REMOVE EXCESSIVE PURPLE OUTLINES
+   ======================================== */
+/* No purple focus rings everywhere */
+*:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(114, 101, 181, 0.1) !important;
+}
+
+/* ========================================
+   FORM ELEMENTS
+   ======================================== */
+input, select, textarea {
+  border-color: #e5e7eb !important;
+  background-color: white !important;
+  color: #1f2937 !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #7265b5 !important;
+}
+
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background-color: #7265b5 !important;
+  border-color: #7265b5 !important;
+}
+
+/* ========================================
+   BADGES - Subtle, Not Heavy Purple
+   ======================================== */
+span[class*="badge"],
+span[class*="rounded-full"],
+span[class*="px-2"] {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* ========================================
+   TABLES
+   ======================================== */
+table th {
+  background-color: #f9fafb !important;
+  color: #374151 !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  font-weight: 600 !important;
+}
+
+table td {
+  color: #1f2937 !important;
+}
+
+table tr:hover {
+  background-color: #f9fafb !important;
+}
+
+/* ========================================
+   PAGE HEADERS
+   ======================================== */
+header,
+div[class*="border-b"][class*="pb-"] {
+  background-color: transparent !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+
+/* Dashboard title */
+h1[class*="text-2xl"],
+h1[class*="text-3xl"] {
+  color: #1f2937 !important;
+  font-weight: 700 !important;
+}
+
+/* ========================================
+   PROJECT/SERVER CARDS
+   ======================================== */
+/* Project and server cards - clean white */
+div[class*="grid"] > div,
+div[class*="space-y-"] > div {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+/* Card titles - dark gray not purple */
+div[class*="border"] h2,
+div[class*="border"] h3 {
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+}
+
+/* Card descriptions */
+div[class*="border"] p {
+  color: #6b7280 !important;
+}
+
+/* ========================================
+   SETTINGS/ACTION LINKS
+   ======================================== */
+/* "+ Add Resource" and "Settings" links - purple */
+a[class*="text-xs"],
+a[href*="settings"],
+a[href*="add"] {
+  color: #7265b5 !important;
+  font-size: 0.875rem !important;
+}
+
+/* ========================================
+   SCROLLBAR
+   ======================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* ========================================
+   MODALS/DROPDOWNS
+   ======================================== */
+[class*="modal"],
+[class*="dropdown"],
+[role="dialog"],
+[role="menu"] {
+  background-color: white !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ========================================
+   OVERRIDE DARK MODE CLASSES
+   ======================================== */
+.dark main,
+.dark body,
+.dark div:not(aside div) {
+  background-color: #f5f5f7 !important;
+}
+
+.dark h1, .dark h2, .dark h3,
+.dark p:not(aside p),
+.dark span:not(aside span) {
+  color: #1f2937 !important;
+}
+
+.dark div[class*="border"] {
+  background-color: white !important;
+  border-color: #e5e7eb !important;
+}
+
+/* ========================================
+   TEAM SELECTOR IN SIDEBAR
+   ======================================== */
+aside select,
+aside [class*="select"] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+}

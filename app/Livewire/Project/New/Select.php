@@ -261,7 +261,8 @@ class Select extends Component
             $this->servers = $this->allServers;
         } else {
             if ($this->allServers instanceof Collection) {
-                $this->servers = $this->allServers->where('settings.is_swarm_worker', false)->where('settings.is_swarm_manager', false)->where('settings.is_build_server', false);
+                // For standalone deployments, exclude Swarm managers
+                $this->servers = $this->allServers->where('settings.is_swarm_manager', false);
             } else {
                 $this->servers = $this->allServers;
             }
@@ -288,7 +289,8 @@ class Select extends Component
                 $this->isDatabase = true;
                 $this->includeSwarm = false;
                 if ($this->allServers instanceof Collection) {
-                    $this->servers = $this->allServers->where('settings.is_swarm_worker', false)->where('settings.is_swarm_manager', false)->where('settings.is_build_server', false);
+                    // For standalone databases, exclude Swarm managers
+                    $this->servers = $this->allServers->where('settings.is_swarm_manager', false);
                 } else {
                     $this->servers = $this->allServers;
                 }
@@ -296,9 +298,10 @@ class Select extends Component
         }
         if (str($type)->startsWith('one-click-service') || str($type)->startsWith('docker-compose-empty')) {
             $this->isDatabase = true;
-            $this->includeSwarm = false;
+            $this->includeSwarm = true;
             if ($this->allServers instanceof Collection) {
-                $this->servers = $this->allServers->where('settings.is_swarm_worker', false)->where('settings.is_swarm_manager', false)->where('settings.is_build_server', false);
+                // For Swarm services, ONLY show managers (services must be deployed to managers)
+                $this->servers = $this->allServers->where('settings.is_swarm_manager', true);
             } else {
                 $this->servers = $this->allServers;
             }

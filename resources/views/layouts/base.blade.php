@@ -16,19 +16,19 @@
     <meta name="robots" content="noindex">
     <meta name="theme-color" content="#ffffff" id="theme-color-meta" />
     <meta name="color-scheme" content="dark light" />
-    <meta name="Description" content="Coolify: An open-source & self-hostable Heroku / Netlify / Vercel alternative" />
+    <meta name="Description" content="Hostzones: Powered by Coolify - An open-source & self-hostable Heroku / Netlify / Vercel alternative" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@coolifyio" />
-    <meta name="twitter:title" content="Coolify" />
-    <meta name="twitter:description" content="An open-source & self-hostable Heroku / Netlify / Vercel alternative." />
-    <meta name="twitter:image" content="https://cdn.coollabs.io/assets/coolify/og-image.png" />
+    <meta name="twitter:site" content="@hostzones" />
+    <meta name="twitter:title" content="Hostzones" />
+    <meta name="twitter:description" content="Your self-hosted infrastructure platform powered by Coolify." />
+    <meta name="twitter:image" content="{{ asset('images/hostzones-logo-white.svg') }}" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://coolify.io" />
-    <meta property="og:title" content="Coolify" />
-    <meta property="og:description" content="An open-source & self-hostable Heroku / Netlify / Vercel alternative." />
-    <meta property="og:site_name" content="Coolify" />
-    <meta property="og:image" content="https://cdn.coollabs.io/assets/coolify/og-image.png" />
+    <meta property="og:url" content="{{ request()->getSchemeAndHttpHost() }}" />
+    <meta property="og:title" content="Hostzones" />
+    <meta property="og:description" content="Your self-hosted infrastructure platform powered by Coolify." />
+    <meta property="og:site_name" content="Hostzones" />
+    <meta property="og:image" content="{{ asset('images/hostzones-logo-white.svg') }}" />
     @use('App\Models\InstanceSettings')
     @php
 
@@ -43,14 +43,18 @@
             }
         }
     @endphp
-    <title>{{ $name }}{{ $title ?? 'Coolify' }}</title>
+    <title>{{ $name }}{{ $title ?? 'Hostzones' }}</title>
     @env('local')
-        <link rel="icon" href="{{ asset('coolify-logo-dev-transparent.png') }}" type="image/png" />
+        <link rel="icon" href="{{ asset('images/hostzones-logo-white.svg') }}" type="image/svg+xml" />
     @else
-        <link rel="icon" href="{{ asset('coolify-logo.svg') }}" type="image/svg+xml" />
+        <link rel="icon" href="{{ asset('images/hostzones-logo-white.svg') }}" type="image/svg+xml" />
     @endenv
     <meta name="csrf-token" content="{{ csrf_token() }}">
     @vite(['resources/js/app.js', 'resources/css/app.css'])
+    
+    <!-- Hostzones Custom Theme -->
+    <link rel="stylesheet" href="{{ asset('css/hostzones-theme.css') }}">
+    
     <script>
         // Update theme-color meta tag (non-critical, can run async)
         const t = localStorage.theme || 'dark';

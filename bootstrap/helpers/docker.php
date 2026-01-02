@@ -63,14 +63,19 @@ function getCurrentApplicationContainerStatus(Server $server, int $id, ?int $pul
 function getCurrentServiceContainerStatus(Server $server, int $id): Collection
 {
     $containers = collect([]);
-    if (! $server->isSwarm()) {
-        $containers = instant_remote_process(["docker ps -a --filter='label=coolify.serviceId={$id}' --format '{{json .}}' "], $server);
-        $containers = format_docker_command_output_to_json($containers);
-
+    if ($server->isSwarm()) {
+        // For Swarm, get services with this serviceId label
+        $services = instant_remote_process(["docker service ls --filter 'label=coolify.serviceId={$id}' --format '{{json .}}'"], $server, false);
+        $containers = format_docker_command_output_to_json($services);
+        
         return $containers->filter();
     }
+    
+    // For standalone Docker
+    $containers = instant_remote_process(["docker ps -a --filter='label=coolify.serviceId={$id}' --format '{{json .}}' "], $server);
+    $containers = format_docker_command_output_to_json($containers);
 
-    return $containers;
+    return $containers->filter();
 }
 
 function format_docker_command_output_to_json($rawOutput): Collection

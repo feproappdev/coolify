@@ -5,6 +5,7 @@ namespace App\Livewire\Project\Resource;
 use App\Models\EnvironmentVariable;
 use App\Models\Service;
 use App\Models\StandaloneDocker;
+use App\Models\SwarmDocker;
 use Livewire\Component;
 
 class Create extends Component
@@ -79,7 +80,15 @@ class Create extends Component
                     });
                 }
                 if ($oneClickService) {
+                    // Try to find destination in both StandaloneDocker and SwarmDocker
                     $destination = StandaloneDocker::whereUuid($destination_uuid)->first();
+                    if (! $destination) {
+                        $destination = SwarmDocker::whereUuid($destination_uuid)->first();
+                    }
+                    if (! $destination) {
+                        return redirect()->route('project.show', ['project_uuid' => $project->uuid])
+                            ->with('error', 'Destination not found.');
+                    }
                     $service_payload = [
                         'docker_compose_raw' => base64_decode($oneClickService),
                         'environment_id' => $environment->id,
