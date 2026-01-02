@@ -156,7 +156,7 @@
                 </div>
             @endif
 
-            @if ($application->build_pack !== 'dockercompose')
+            @if ($application->build_pack !== 'dockercompose' || $application->destination->server->isSwarm())
                 <div class="flex items-center gap-2 pt-8">
                     <h3>Docker Registry</h3>
                     @if ($application->build_pack !== 'dockerimage' && !$application->destination->server->isSwarm())
@@ -184,6 +184,14 @@
                                 helper="Enter a tag (e.g., 'latest', 'v1.2.3') or SHA256 hash (e.g., 'sha256-59e02939b1bf39f16c93138a28727aec520bb916da021180ae502c61626b3cf0')"
                                 x-bind:disabled="!canUpdate" />
                         @endif
+                    @elseif ($application->build_pack === 'dockercompose' && $application->destination->server->isSwarm())
+                        <x-forms.input id="dockerRegistryImageName" required label="Docker Image" placeholder="Required! e.g., registry.example.com/myapp:latest"
+                            helper="For Docker Compose on Swarm, specify the registry image name. Images defined in your compose file with a 'build:' section will be built, tagged with this name, and pushed to the registry before deployment."
+                            x-bind:disabled="!canUpdate" />
+                        <x-forms.input id="dockerRegistryImageTag"
+                            helper="If set, it will tag the built image with this tag too. <br><br>Example: If you set it to 'latest', it will push the image with the commit sha tag + with the latest tag."
+                            placeholder="Empty means latest will be used." label="Docker Image Tag"
+                            x-bind:disabled="!canUpdate" />
                     @else
                         @if (
                                 $application->destination->server->isSwarm() ||

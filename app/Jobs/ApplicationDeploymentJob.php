@@ -743,6 +743,11 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         // This overwrites the build-time .env with ALL variables (build-time + runtime)
         $this->save_runtime_environment_variables();
 
+        // For Swarm deployments, push built images to registry
+        if ($this->server->isSwarm() && ! str($this->application->docker_registry_image_name)->isEmpty()) {
+            $this->push_compose_images_to_registry();
+        }
+
         $this->stop_running_container(force: true);
         $this->application_deployment_queue->addLogEntry('Starting new application.');
         $networkId = $this->application->uuid;
@@ -750,7 +755,16 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $networkId = "{$this->application->uuid}-{$this->pull_request_id}";
         }
         if ($this->server->isSwarm()) {
-            // TODO
+            // For Swarm mode, use docker stack deploy
+            $this->application_deployment_queue->addLogEntry('Deploying to Docker Swarm using stack deploy.');
+            $this->write_deployment_configurations();
+            $server_workdir = $this->application->workdir();
+            $this->execute_remote_command(
+                [
+                    executeInDocker($this->deployment_uuid, "docker stack deploy --detach=true --with-registry-auth -c {$this->workdir}{$this->docker_compose_location} {$this->application->uuid}"),
+                ],
+            );
+            $this->application_deployment_queue->addLogEntry('Stack deployed to Swarm.');
         } else {
             $this->execute_remote_command([
                 "docker network inspect '{$networkId}' >/dev/null 2>&1 || docker network create --attachable '{$networkId}' >/dev/null || true",
@@ -1046,6 +1060,58 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             if ($forceFail) {
                 throw new DeploymentException(get_class($e).': '.$e->getMessage(), $e->getCode(), $e);
             }
+        }
+    }
+
+    /**
+     * Push Docker Compose built images to registry for Swarm deployment
+     * This method handles pushing images built by docker compose build to a registry
+     * so they can be pulled by Swarm nodes during stack deployment.
+     */
+    private function push_compose_images_to_registry()
+    {
+        if (str($this->application->docker_registry_image_name)->isEmpty()) {
+            $this->application_deployment_queue->addLogEntry('No Docker registry image name configured. Skipping push.');
+            return;
+        }
+
+        $this->application_deployment_queue->addLogEntry('----------------------------------------');
+        $this->application_deployment_queue->addLogEntry('Pushing Docker Compose built images to registry for Swarm deployment.');
+
+        try {
+            // Parse the compose file to find services with build sections
+            $composeFile = $this->application->settings->is_raw_compose_deployment_enabled
+                ? Yaml::parse($this->application->docker_compose_raw)
+                : Yaml::parse($this->application->docker_compose);
+
+            $services = data_get($composeFile, 'services', []);
+
+            foreach ($services as $serviceName => $serviceConfig) {
+                // Only push services that have a build section (were built locally)
+                if (isset($serviceConfig['build'])) {
+                    // Get the image name from compose or generate one
+                    $imageName = data_get($serviceConfig, 'image');
+                    if (empty($imageName)) {
+                        // If no image specified, docker compose names it as project_service
+                        $imageName = "{$this->application->uuid}_{$serviceName}";
+                    }
+
+                    $this->application_deployment_queue->addLogEntry("Pushing image for service '{$serviceName}': {$imageName}");
+
+                    $this->execute_remote_command(
+                        [
+                            executeInDocker($this->deployment_uuid, "docker push {$imageName}"),
+                            'hidden' => true,
+                            'ignore_errors' => false,
+                        ],
+                    );
+                }
+            }
+
+            $this->application_deployment_queue->addLogEntry('Successfully pushed images to registry.');
+        } catch (Exception $e) {
+            $this->application_deployment_queue->addLogEntry('Failed to push Docker Compose images to registry: ' . $e->getMessage());
+            throw new DeploymentException('Failed to push images to registry for Swarm deployment: ' . $e->getMessage(), $e->getCode(), $e);
         }
     }
 
