@@ -42,6 +42,9 @@ COPY resources/views/layouts/app.blade.php /var/www/html/resources/views/layouts
 COPY resources/views/components/navbar.blade.php /var/www/html/resources/views/components/navbar.blade.php
 COPY resources/views/livewire/dashboard.blade.php /var/www/html/resources/views/livewire/dashboard.blade.php
 
+# Application General settings view with Docker Compose + Swarm registry support
+COPY resources/views/livewire/project/application/general.blade.php /var/www/html/resources/views/livewire/project/application/general.blade.php
+
 # Note: Permissions are already set in base image
 # Files are owned by www-data:www-data
 
