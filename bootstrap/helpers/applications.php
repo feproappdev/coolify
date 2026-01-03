@@ -85,12 +85,22 @@ function queue_application_deployment(Application $application, string $deployme
         $deployment->update([
             'status' => ApplicationDeploymentStatus::IN_PROGRESS->value,
         ]);
-        ApplicationDeploymentJob::dispatch(
-            application_deployment_queue_id: $deployment->id,
-        );
+        
+        // Log the dispatch for debugging
+        \Illuminate\Support\Facades\Log::info("Dispatching ApplicationDeploymentJob", [
+            'deployment_id' => $deployment->id,
+            'deployment_uuid' => $deployment_uuid,
+            'application_id' => $application_id,
+        ]);
+        
+        // Dispatch with explicit queue
+        ApplicationDeploymentJob::dispatch($deployment->id)->onQueue('high');
     } else {
         // Cannot queue - concurrent limit reached, keep as queued
-        ray("Deployment {$deployment_uuid} waiting in queue");
+        \Illuminate\Support\Facades\Log::info("Deployment waiting in queue", [
+            'deployment_uuid' => $deployment_uuid,
+            'reason' => 'next_queuable returned false'
+        ]);
     }
     return [
         'status' => 'queued',

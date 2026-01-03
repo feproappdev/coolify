@@ -53,19 +53,23 @@
 
         if (userSettings === 'dark') {
             document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-theme', 'dark');
             this.theme = 'dark';
             isDark = true;
         } else if (userSettings === 'light') {
             document.documentElement.classList.remove('dark');
+            document.documentElement.setAttribute('data-theme', 'light');
             this.theme = 'light';
             isDark = false;
         } else if (userSettings === 'system') {
             this.theme = 'system';
             if (darkModePreference) {
                 document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-theme', 'dark');
                 isDark = true;
             } else {
                 document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-theme', 'light');
                 isDark = false;
             }
         }

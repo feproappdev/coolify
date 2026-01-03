@@ -5,6 +5,7 @@ namespace App\Livewire\Project\Shared\Storages;
 use App\Models\LocalPersistentVolume;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
+use Livewire\Attributes\Modelable;
 
 class Show extends Component
 {
@@ -22,10 +23,10 @@ class Show extends Component
 
     public ?string $startedAt = null;
 
-    // Explicit properties
-    public string $name;
+    // Explicit properties for form binding
+    public string $name = '';
 
-    public string $mountPath;
+    public string $mountPath = '';
 
     public ?string $hostPath = null;
 
@@ -55,8 +56,8 @@ class Show extends Component
             $this->storage->host_path = $this->hostPath;
         } else {
             // Sync FROM model (on load/refresh)
-            $this->name = $this->storage->name;
-            $this->mountPath = $this->storage->mount_path;
+            $this->name = $this->storage->name ?? '';
+            $this->mountPath = $this->storage->mount_path ?? '';
             $this->hostPath = $this->storage->host_path;
         }
     }
@@ -67,6 +68,19 @@ class Show extends Component
         $this->isReadOnly = $this->storage->shouldBeReadOnlyInUI();
     }
 
+    /**
+     * Re-sync data when the storage model is updated from outside
+     * This ensures the form always shows the latest database values
+     */
+    public function hydrate()
+    {
+        // Refresh the storage from database to ensure we have latest data
+        if ($this->storage && $this->storage->exists) {
+            $this->storage->refresh();
+            $this->syncData(false);
+        }
+    }
+
     public function submit()
     {
         $this->authorize('update', $this->resource);
@@ -75,6 +89,8 @@ class Show extends Component
         $this->syncData(true);
         $this->storage->save();
         $this->dispatch('success', 'Storage updated successfully');
+        // Dispatch refresh event to update parent component
+        $this->dispatch('refreshStorages');
     }
 
     public function delete($password)

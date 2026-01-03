@@ -40,16 +40,20 @@
                 localStorage.setItem('theme', userSettings);
                 if (userSettings === 'dark') {
                     document.documentElement.classList.add('dark');
+                    document.documentElement.setAttribute('data-theme', 'dark');
                     this.theme = 'dark';
                 } else if (userSettings === 'light') {
                     document.documentElement.classList.remove('dark');
+                    document.documentElement.setAttribute('data-theme', 'light');
                     this.theme = 'light';
                 } else if (darkModePreference) {
                     this.theme = 'system';
                     document.documentElement.classList.add('dark');
+                    document.documentElement.setAttribute('data-theme', 'dark');
                 } else if (!darkModePreference) {
                     this.theme = 'system';
                     document.documentElement.classList.remove('dark');
+                    document.documentElement.setAttribute('data-theme', 'light');
                 }
             },
             checkZoom() {

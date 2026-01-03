@@ -45,6 +45,13 @@ COPY resources/views/livewire/dashboard.blade.php /var/www/html/resources/views/
 # Application General settings view with Docker Compose + Swarm registry support
 COPY resources/views/livewire/project/application/general.blade.php /var/www/html/resources/views/livewire/project/application/general.blade.php
 
+# Application heading with Swarm deploy button fix
+COPY resources/views/livewire/project/application/heading.blade.php /var/www/html/resources/views/livewire/project/application/heading.blade.php
+
+# Console commands and scheduler
+COPY app/Console/Commands/FixStuckDeployments.php /var/www/html/app/Console/Commands/FixStuckDeployments.php
+COPY app/Console/Kernel.php /var/www/html/app/Console/Kernel.php
+
 # Note: Permissions are already set in base image
 # Files are owned by www-data:www-data
 

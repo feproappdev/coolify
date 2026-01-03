@@ -668,6 +668,10 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
             $yaml = Yaml::dump(convertToArray($composeFile), 10);
         }
+        
+        // Resolve {{ project.XXX }}, {{ environment.XXX }}, {{ team.XXX }} shared variables in compose file
+        $yaml = $this->resolve_shared_variables_in_compose($yaml);
+        
         $this->docker_compose_base64 = base64_encode($yaml);
         $this->execute_remote_command([
             executeInDocker($this->deployment_uuid, "echo '{$this->docker_compose_base64}' | base64 -d | tee {$this->workdir}{$this->docker_compose_location} > /dev/null"),
@@ -761,6 +765,16 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
             $this->application_deployment_queue->addLogEntry('Deploying to Docker Swarm using stack deploy.');
             $this->write_deployment_configurations();
             $server_workdir = $this->application->workdir();
+            
+            // Create the application network if it doesn't exist (Swarm overlay)
+            $this->execute_remote_command(
+                [
+                    "docker network inspect '{$networkId}' >/dev/null 2>&1 || docker network create --driver overlay --attachable '{$networkId}' >/dev/null || true",
+                    'hidden' => true,
+                    'ignore_errors' => true,
+                ],
+            );
+            
             $this->execute_remote_command(
                 [
                     executeInDocker($this->deployment_uuid, "docker stack deploy --detach=true --with-registry-auth -c {$this->workdir}{$this->docker_compose_location} {$this->application->uuid}"),
@@ -2008,6 +2022,63 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
         }
     }
 
+    /**
+     * Resolve {{ project.XXX }}, {{ environment.XXX }}, {{ team.XXX }} shared variables in compose file YAML
+     */
+    private function resolve_shared_variables_in_compose(string $yaml): string
+    {
+        // Match patterns like {{ project.XXX }}, {{ environment.XXX }}, {{ team.XXX }} or without spaces
+        $pattern = '/\{\{\s*(team|project|environment)\.([^}\s]+)\s*\}\}/';
+        
+        return preg_replace_callback($pattern, function ($matches) {
+            $type = $matches[1]; // 'team', 'project', or 'environment'
+            $variableName = $matches[2]; // The variable key name
+            
+            $teamId = $this->application->environment->project->team->id ?? null;
+            $projectId = $this->application->environment->project->id ?? null;
+            $environmentId = $this->application->environment->id ?? null;
+            
+            if (! $teamId) {
+                ray('resolve_shared_variables: No team ID found');
+                return $matches[0]; // Return original if no team context
+            }
+            
+            // Build query based on type
+            $query = \App\Models\SharedEnvironmentVariable::where('type', $type)
+                ->where('key', $variableName)
+                ->where('team_id', $teamId);
+            
+            switch ($type) {
+                case 'project':
+                    if ($projectId) {
+                        $query->where('project_id', $projectId);
+                    }
+                    break;
+                case 'environment':
+                    if ($projectId) {
+                        $query->where('project_id', $projectId);
+                    }
+                    if ($environmentId) {
+                        $query->where('environment_id', $environmentId);
+                    }
+                    break;
+                case 'team':
+                    // Team level only needs team_id which is already added
+                    break;
+            }
+            
+            $sharedVariable = $query->first();
+            
+            if ($sharedVariable && $sharedVariable->value) {
+                ray("resolve_shared_variables: Resolved {$type}.{$variableName}");
+                return $sharedVariable->value;
+            }
+            
+            ray("resolve_shared_variables: Could not resolve {$type}.{$variableName}");
+            return $matches[0]; // Return original if not found
+        }, $yaml) ?? $yaml;
+    }
+
     private function prepare_builder_image(bool $firstTry = true)
     {
         $this->checkForCancellation();
@@ -2021,7 +2092,8 @@ class ApplicationDeploymentJob implements ShouldBeEncrypted, ShouldQueue
 
         $env_flags = $this->generate_docker_env_flags_for_secrets();
         // Mount buildx config if it exists (enables custom builders with proper DNS)
-        $buildxMount = ($this->buildxConfigExists === 'OK') ? "-v {$this->serverUserHomeDir}/.docker/buildx:/root/.docker/buildx:ro " : "";
+        // Note: NOT read-only because buildx writes activity data to this directory
+        $buildxMount = ($this->buildxConfigExists === 'OK') ? "-v {$this->serverUserHomeDir}/.docker/buildx:/root/.docker/buildx " : "";
         
         if ($this->use_build_server) {
             if ($this->dockerConfigFileExists === 'NOK') {

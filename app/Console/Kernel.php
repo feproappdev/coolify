@@ -82,6 +82,9 @@ class Kernel extends ConsoleKernel
             $this->scheduleInstance->command('cleanup:database --yes')->daily();
             $this->scheduleInstance->command('uploads:clear')->everyTwoMinutes();
 
+            // Fix stuck deployments every 2 minutes (check for 3+ min old stuck jobs)
+            $this->scheduleInstance->command('deployments:fix-stuck --minutes=3')->everyTwoMinutes()->onOneServer();
+
             // Cleanup orphaned PR preview containers daily
             $this->scheduleInstance->job(new CleanupOrphanedPreviewContainersJob)->daily()->onOneServer();
         }

@@ -68,6 +68,8 @@ class Storage extends Component
     {
         $this->fileStorage = $this->resource->fileStorages()->get();
         $this->resource->load('persistentStorages.resource');
+        // Dispatch event to refresh child components that list storages
+        $this->dispatch('refreshStorages');
     }
 
     public function getFilesProperty()
